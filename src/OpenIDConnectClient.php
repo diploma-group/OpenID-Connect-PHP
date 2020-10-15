@@ -226,14 +226,27 @@ class OpenIDConnectClient
 
     protected $enc_type = PHP_QUERY_RFC1738;
 
+    
+    /**
+     * Resource parameter, as described in
+     * Microsoft OpenID Connect 1.0 Protocol Extensions
+     *
+     * @see https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-oapx
+     * @see https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-oidce
+     *
+     * @var null|string
+     */
+    protected $resource = null;
+    
     /**
      * @param $provider_url string optional
      *
-     * @param $client_id string optional
-     * @param $client_secret string optional
-     * @param null $issuer
+     * @param $client_id null|string optional
+     * @param $client_secret null|string optional
+     * @param $issuer null|string optional
+     * @param $resource null|string (optional) The resource identity (Microsoft OpenID Connect 1.0 Protocol Extensions)
      */
-    public function __construct($provider_url = null, $client_id = null, $client_secret = null, $issuer = null) {
+    public function __construct($provider_url = null, $client_id = null, $client_secret = null, $issuer = null, $resource = null) {
         $this->setProviderURL($provider_url);
         if ($issuer === null) {
             $this->setIssuer($provider_url);
@@ -243,7 +256,8 @@ class OpenIDConnectClient
 
         $this->clientID = $client_id;
         $this->clientSecret = $client_secret;
-
+        $this->setResource($resource);
+        
         $this->issuerValidator = function($iss){
 	        return ($iss === $this->getIssuer() || $iss === $this->getWellKnownIssuer() || $iss === $this->getWellKnownIssuer(true));
         };
@@ -262,7 +276,20 @@ class OpenIDConnectClient
     public function setIssuer($issuer) {
         $this->providerConfig['issuer'] = $issuer;
     }
-
+    
+    /**
+     * Sets the resource parameter.
+     * Microsoft OpenID Connect 1.0 Protocol Extensions
+     *
+     * @see https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-oapx
+     * @see https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-oidce
+     *
+     * @param string|null $resource The resource identity
+     */
+    public function setResource($resource) {
+    	$this->resource = $resource;
+    }
+    
     /**
      * @param $response_types
      */
@@ -630,6 +657,11 @@ class OpenIDConnectClient
             'scope' => 'openid'
         ));
 
+        // Microsoft OpenID Connect 1.0 Protocol Extensions:
+        if ($this->resource !== null) {
+        	$auth_params['resource'] = $this->resource;
+        }
+        
         // If the client has been registered with additional scopes
         if (count($this->scopes) > 0) {
             $auth_params = array_merge($auth_params, array('scope' => implode(' ', array_merge($this->scopes, array('openid')))));
